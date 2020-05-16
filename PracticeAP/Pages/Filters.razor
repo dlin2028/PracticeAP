@@ -1,0 +1,22 @@
+﻿@page "/filters/{examName}"
+@using PracticeAP.Data
+
+<h1>@info.CourseName</h1>
+<MatTextField @bind-Value="@minYear" Label="Min Year"></MatTextField>
+<MatTextField @bind-Value="@maxYear" Label="Max Year"></MatTextField>
+
+<h3>Tags</h3>
+
+@code {
+    [Parameter]
+    public string examName { get; set; }
+    public int minYear { get; set; }
+    public int maxYear { get; set; }
+
+    private QuestionInfo info;
+
+    protected override void OnParametersSet()
+    {
+        info = new QuestionInfo(examName);
+    }
+}

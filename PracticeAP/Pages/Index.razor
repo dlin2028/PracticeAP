@@ -1,0 +1,27 @@
+﻿@page "/"
+@inject Microsoft.AspNetCore.Components.NavigationManager navigationManager
+@inject CourseService courseService
+@using PracticeAP.Data
+
+<h1>Prepare for your next AP Exam</h1>
+
+<MatAutocompleteList Items="@exams" TItem="string" OnTextChanged="questionPicker" Label="Enter your AP Exam"></MatAutocompleteList>
+
+@code
+{
+    string[] exams;
+
+    protected override async Task OnInitializedAsync()
+    {
+        exams = await courseService.GetCoursesAsync();
+        exams = exams.Select(x => "AP " + x).ToArray();
+    }
+
+    void questionPicker(String text)
+    {
+        if(exams.Contains(text))
+        {
+            navigationManager.NavigateTo($"/filters/{text}");
+        }
+    }
+}
