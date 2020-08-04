@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
@@ -11,33 +12,48 @@ namespace PracticeAP.Data
     public class CourseService
     {
         private static List<(int, string)> courses = new List<(int, string)>();
-        public Task<string[]> GetCoursesAsync()
+        CancellationTokenSource tokenSource;
+
+        public CourseService()
         {
-            return Task.Run(() =>
+            tokenSource = new CancellationTokenSource();
+        }
+
+        public async Task<string[]> GetCoursesAsync()
+        {
+            CancellationToken ct = tokenSource.Token;
+
+            string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new String[] { @"bin\" }, StringSplitOptions.None)[0];
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(projectPath)
+                .AddJsonFile("appsettings.json")
+                .Build();
+
+            using (SqlConnection conn = new SqlConnection(configuration.GetConnectionString("localdb")))
             {
-                string projectPath = AppDomain.CurrentDomain.BaseDirectory.Split(new String[] { @"bin\" }, StringSplitOptions.None)[0];
-                var configuration = new ConfigurationBuilder()
-                    .SetBasePath(projectPath)
-                    .AddJsonFile("appsettings.json")
-                    .Build();
+                await conn.OpenAsync(ct);
+                await Task.Delay(1000);
+                ct.ThrowIfCancellationRequested();
 
-                using (SqlConnection conn = new SqlConnection(configuration.GetConnectionString("localdb")))
+                using (SqlCommand command = new SqlCommand("GetAllCourses", conn) { CommandType = CommandType.StoredProcedure })
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
                 {
-                    conn.Open();
+                    courses = new List<(int, string)>();
 
-                    using (SqlCommand command = new SqlCommand("EXEC GetAllCourses", conn))
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    while (await reader.ReadAsync(ct))
                     {
-                        courses = new List<(int, string)>();
-                        while (reader.Read())
-                        {
-                            var course = (reader.GetInt32(0), reader.GetString(1));
-                            courses.Add(course);
-                        }
+                        ct.ThrowIfCancellationRequested();
+                        var course = ((int)reader["CourseId"], reader["Name"].ToString());
+                        courses.Add(course);
                     }
                 }
-                return courses.Select(x => x.Item2).ToArray();
-            });
+            }
+            return courses.Select(x => x.Item2).ToArray();
         }
-}
+
+        public void CancelThing()
+        {
+            tokenSource.Cancel();
+        }
+    }
 }

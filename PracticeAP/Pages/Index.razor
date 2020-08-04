@@ -6,20 +6,25 @@
 <h1>Prepare for your next AP Exam</h1>
 
 <MatAutocompleteList Items="@exams" TItem="string" OnTextChanged="questionPicker" Label="Enter your AP Exam"></MatAutocompleteList>
+<MatButton OnClick="getCourses">GetCourses</MatButton>
+<MatButton OnClick="cancel">Cancel</MatButton>
 
 @code
 {
     string[] exams;
 
-    protected override async Task OnInitializedAsync()
+    protected async Task getCourses()
     {
         exams = await courseService.GetCoursesAsync();
         exams = exams.Select(x => "AP " + x).ToArray();
     }
-
+    void cancel()
+    {
+        courseService.CancelThing();
+    }
     void questionPicker(String text)
     {
-        if(exams.Contains(text))
+        if (exams.Contains(text))
         {
             navigationManager.NavigateTo($"/filters/{text}");
         }
